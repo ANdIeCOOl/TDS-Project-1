@@ -38,6 +38,7 @@ import inspect
 from sklearn.metrics.pairwise import cosine_similarity
 from typing import Callable, get_type_hints, Dict, Any, Tuple,Optional,List
 from pydantic import create_model, BaseModel
+import re
 dotenv.load_dotenv()
 
 API_KEY = os.getenv("OPEN_AI_PROXY_TOKEN")
@@ -55,9 +56,7 @@ def ensure_local_path(path: str) -> str:
     
     else:
         logging.info(f"Inside ensure_local_path generate_schema with path: {path}")
-        return path.lstrip("/")  # If absolute local path, remove leading slash
-        # return "."+path
-        #return os.path.join("./", path)  
+        return path.lstrip("/")    
 
 def convert_function_to_openai_schema(func: Callable) -> dict:
     """
@@ -72,34 +71,32 @@ def convert_function_to_openai_schema(func: Callable) -> dict:
     # Extract the function's signature
     sig = inspect.signature(func)
     
-    # Extract type hints
+
     type_hints = get_type_hints(func)
     
-    # Create a Pydantic model dynamically based on the function's parameters
+    
     fields = {
         name: (type_hints.get(name, Any), ...)
         for name in sig.parameters
     }
     PydanticModel = create_model(func.__name__ + "Model", **fields)
     
-    # Generate the JSON schema from the Pydantic model
+   
     schema = PydanticModel.model_json_schema()
     
     # Parse the function's docstring
     docstring = inspect.getdoc(func) or ""
     parsed_docstring = docstring_parser.parse(docstring)
     
-    # Extract parameter descriptions
+
     param_descriptions = {
         param.arg_name: param.description or ""
         for param in parsed_docstring.params
     }
     
-    # Update the schema with descriptions and set additionalProperties to False
     for prop_name, prop in schema.get('properties', {}).items():
         prop['description'] = param_descriptions.get(prop_name, '')
         
-        # Ensure 'items' has a 'type' key for array properties
         if prop.get('type') == 'array' and 'items' in prop:
             if not isinstance(prop['items'], dict) or 'type' not in prop['items']:
                 # Default to array of strings if type is not specified
@@ -107,10 +104,8 @@ def convert_function_to_openai_schema(func: Callable) -> dict:
     
     schema['additionalProperties'] = False
     
-    # Ensure 'required' field is present and includes all parameters
     schema['required'] = list(fields.keys())
     
-    # Construct the final OpenAI function schema
     openai_function_schema = {
         'type': 'function',
         'function':{
@@ -139,7 +134,6 @@ def format_file_with_prettier(file_path: str, prettier_version: str):
     subprocess.run(["npx", f"prettier@{prettier_version}", "--write", input_file_path])
 
 def query_gpt(user_input: str,task: str):
-    print("🔍 User Input:", user_input)
     response = requests.post(
         URL_CHAT,
         headers={"Authorization": f"Bearer {API_KEY}",
@@ -207,12 +201,7 @@ def query_gpt_image(image_path: str, task: str):
                      )
     
     response.raise_for_status()
-    result = response.json() 
     return response.json()
-
-import re
-
-
 
 """"
 A TASKS
@@ -230,26 +219,22 @@ def query_database(db_file: str, output_file: str, query: str, query_params: Tup
     Returns:
         None
     """
-    # Ensure the database and output file paths are correct
     db_file_path = ensure_local_path(db_file)
     output_file_path = ensure_local_path(output_file)
 
-    # Connect to the SQLite database
     conn = sqlite3.connect(db_file_path)
     cursor = conn.cursor()
 
     try:
-        # Execute the query with the provided parameters
+
         cursor.execute(query, query_params)
         result = cursor.fetchone()
 
-        # Assuming the query returns a single value (e.g., total_sales)
         if result:
             output_data = result[0]
         else:
             output_data = 'No results found.'
 
-        # Write the result to the output file
         with open(output_file_path, "w") as file:
             file.write(str(output_data))
 
@@ -257,7 +242,6 @@ def query_database(db_file: str, output_file: str, query: str, query_params: Tup
         print(f"An error occurred: {e}")
 
     finally:
-        # Close the database connection
         conn.close()
 def extract_specific_text_using_llm(input_file: str, output_file: str, task: str):
     """
@@ -270,17 +254,11 @@ def extract_specific_text_using_llm(input_file: str, output_file: str, task: str
     Returns:
         None
     """
-    # Write the extracted email address to the output file
     input_file_path = ensure_local_path(input_file)
     with open(input_file_path, "r") as file:
         text_info = file.read() #readlines gives list, this gives string
     output_file_path = ensure_local_path(output_file)
     response = query_gpt(text_info, task) # recieved in json format
-    # response = ollama.chat(
-    #         'qwen2.5-coder:7b-instruct-q4_1',
-    #         messages=[{'role': 'system','content':"YOU ARE PRECISE. Just give the exact and required answer"+task},
-    #                     {'role': 'user', 'content': text_info}])
-
     logging.info(f"Inside extract_specific_text_using_llm with input_file: {input_file}, output_file: {output_file}, and task: {task}")
     with open(output_file_path, "w") as file:
         file.write(response["choices"][0]["message"]["content"])
@@ -291,7 +269,6 @@ def get_embeddings(texts: List[str]):
             json={"model": "text-embedding-3-small", "input": texts},
         )
     embeddings = np.array([emb["embedding"] for emb in response.json()["data"]])
-    # return [item["embedding"] for item in response.json()["data"]]
     return embeddings
 def get_similar_text_using_embeddings(input_file: str, output_file: str, no_of_similar_texts: int):
     """
@@ -308,30 +285,21 @@ def get_similar_text_using_embeddings(input_file: str, output_file: str, no_of_s
     output_file_path = ensure_local_path(output_file)
 
 
-    # Load comments from the file
     with open(input_file_path, "r") as file:
         documents = file.readlines()
     
-    # Remove newline characters
     documents = [comment.strip() for comment in documents]
     
-    # Load a pre-trained sentence transformer model
     line_embeddings = get_embeddings(documents)
-    
-    
-    # Compute pairwise cosine similarity
     similarity_matrix = cosine_similarity(line_embeddings)
     
-    # Find the most similar pair (excluding self-similarity)
     np.fill_diagonal(similarity_matrix, -1)  # Ignore self-similarity
     most_similar_indices = np.unravel_index(np.argmax(similarity_matrix), similarity_matrix.shape)
     
-    # Get the most n similar texts
     similar_texts = []
     for i in range(no_of_similar_texts):
         similar_texts.append(documents[most_similar_indices[i]])
 
-    # Write the them to the output file
     with open(output_file_path, "w") as file:
         for text in similar_texts:
             file.write(text + "\n")
@@ -378,15 +346,12 @@ def extract_specific_content_and_create_index(input_file: str, output_file: str,
             for line in file:
                 if line.startswith(content_marker):
                     title = line.lstrip(content_marker).strip()
-                    break  # Stop reading after first H1
+                    break  
 
-        # Compute relative path
         relative_path = os.path.relpath(extenstion_file, input_file_path)
 
-        # Store in index (even if no H1 is found)
         index[relative_path] = title if title else ""
 
-    # Write to JSON file
     with open(output_file_path, "w", encoding="utf-8") as json_file:
         json.dump(index, json_file, indent=2, sort_keys=True)
 def process_and_write_logfiles(input_file: str, output_file: str, num_logs: int = 10, num_of_lines: int = 1):
@@ -400,18 +365,16 @@ def process_and_write_logfiles(input_file: str, output_file: str, num_logs: int 
         num_of_lines (int): The number of lines to extract from each log file.
 
     """
-    # Get all .log files in the directory
     input_file_path = ensure_local_path(input_file)
     output_file_path = ensure_local_path(output_file) 
     log_files = glob.glob(os.path.join(input_file_path, "*.log"))
     
-    # Sort files by modification time, most recent first
     log_files.sort(key=os.path.getmtime, reverse=True)
     
-    # Take the top `num_logs` files
+
     recent_logs = log_files[:num_logs]
     
-    # Write the first line of each file to the output file
+
     with open(output_file_path, "w") as outfile:
         for log_file in recent_logs:
             with open(log_file, "r") as infile:
@@ -502,43 +465,7 @@ def install_and_run_script(package: str, args: list,*,script_url: str):
         subprocess.run(["pip", "install", package])
     subprocess.run(["curl", "-O", script_url])
     script_name = script_url.split("/")[-1]
-    print("111"*10)
-    print(script_name)
-    print("111"*10)
     subprocess.run(["uv","run", script_name,args[0]])
-
-# Define the data payload
-# def query_gpt_with_tools(user_input: str, tools: list[Dict[str, Any]]) -> Dict[str, Any]:
-#     print("🔍 User Input:", user_input)
-#     response = requests.post(
-#         "http://aiproxy.sanand.workers.dev/openai/v1/chat/completions",
-#         headers={"Authorization": f"Bearer {API_KEY}",
-#                 "Content-Type": "application/json"},
-#         json={
-#             "model": "gpt-4o-mini",
-#             "messages": [
-#                 {"role": "user", "content": user_input}
-#             ],
-#             "tools": tools,
-#             "tool_choice": "required"
-#         }
-#     )
-#     result = response.json()
-#     # response = httpx.post(
-#     #     "https://aiproxy.sanand.workers.dev/openai/v1/chat/completions",
-#     #     headers={
-#     #         "Authorization": f"Bearer {API_KEY}",
-#     #         "Content-Type": "application/json",
-#     #     },
-#     #     json={
-#     #         "model": "gpt-4o-mini",
-#     #         "messages": [{"role": "user", "content": user_input}],
-#     #         "tools": tools,
-#     #         "tool_choice": "required",
-#     #     },
-#     # )
-#     print("🔍 Full Response:", result)
-#     return response.json()["choices"][0]["message"]["tool_calls"][0]["function"]
 
 """"
 B TASKS
@@ -660,10 +587,4 @@ def filter_csv(input_file: str, column: str, value: str, output_file: str):
     with open(output_file, "w") as file:
         json.dump(results, file)
 
-# schema = convert_function_to_openai_schema(fetch_data_from_api_and_save)
-# print(schema)
-# if __name__ == "__main__":
-#     prompt = """The SQLite database file /data/ticket-sales.db has a tickets with columns type, units, and price. Each row is a customer bid for a concert ticket. What is the total sales of all the items in the “Gold” ticket type? Write the number in /data/ticket-sales-gold.txt"""
-#     response = query_gpt(prompt, [schema])
-#     print(response)
-#     #print([tool_call["function"] for tool_call in response["tool_calls"]])
+

@@ -63,7 +63,7 @@ def ensure_local_path(path: str) -> str:
     
     else:
         logging.info(f"Inside ensure_local_path with path: {path}")
-        return path.lstrip("/")  # If absolute local path, remove leading slash
+        return path.lstrip("/")  
 
 function_mappings: Dict[str, Callable] = {
 "install_and_run_script": install_and_run_script, 
@@ -130,7 +130,6 @@ def execute_function_call(function_call):
 async def run_task(task: str = Query(..., description="Plain-English task description")):
     tools = [convert_function_to_openai_schema(func) for func in function_mappings.values()]
     logging.info(len(tools))
-    #tools = [convert_function_to_openai_schema(count_occurrences)] #REMOVE THIS LATER
     logging.info(f"Inside run_task with task: {task}")
     try:
         function_call_response_message = parse_task_description(task,tools) #returns  message from response
@@ -157,7 +156,6 @@ async def read_file(path: str = Query(..., description="Path to the file to read
 
 if __name__ == "__main__":
     import uvicorn
-    #tools = [convert_function_to_openai_schema(func) for func in function_mappings.values()]
     tools = [convert_function_to_openai_schema(count_occurrences), convert_function_to_openai_schema(query_database)] #REMOVE THIS LATER
     print(tools)
     uvicorn.run(app, host="0.0.0.0", port=8000)
