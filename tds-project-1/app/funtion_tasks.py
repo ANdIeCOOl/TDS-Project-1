@@ -38,7 +38,7 @@ from pydantic import create_model, BaseModel
 import re
 dotenv.load_dotenv()
 
-API_KEY = os.getenv("AI_PROXY_TOKEN")
+API_KEY = os.getenv("AIPROXY_TOKEN")
 URL_CHAT = "http://aiproxy.sanand.workers.dev/openai/v1/chat/completions"
 URL_EMBEDDING = "http://aiproxy.sanand.workers.dev/openai/v1/embeddings"
 RUNNING_IN_CODESPACES = "CODESPACES" in os.environ
