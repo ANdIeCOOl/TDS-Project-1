@@ -45,8 +45,8 @@ install_and_run_script
 
 load_dotenv()
 API_KEY = os.getenv("AI_PROXY_TOKEN")
-URL_CHAT = os.getenv("OPEN_AI_PROXY_URL")
-URL_EMBEDDING = os.getenv("OPEN_AI_EMBEDDING_URL")
+URL_CHAT = ""
+URL_EMBEDDING = ""
 
 app = FastAPI()
 
