@@ -3,13 +3,11 @@
 #   "python-dotenv",
 #   "beautifulsoup4",
 #   "markdown",
-#   "requests<3",
 #   "duckdb",
 #   "numpy",
 #   "python-dateutil",
 #   "docstring-parser",
 #   "httpx",
-#   "scikit-learn",
 #   "pydantic",
 # ]
 # ///
@@ -35,7 +33,6 @@ import re
 import docstring_parser
 import httpx
 import inspect
-from sklearn.metrics.pairwise import cosine_similarity
 from typing import Callable, get_type_hints, Dict, Any, Tuple,Optional,List
 from pydantic import create_model, BaseModel
 import re
@@ -291,7 +288,7 @@ def get_similar_text_using_embeddings(input_file: str, output_file: str, no_of_s
     documents = [comment.strip() for comment in documents]
     
     line_embeddings = get_embeddings(documents)
-    similarity_matrix = cosine_similarity(line_embeddings)
+    similarity_matrix = np.dot(embeddings, embeddings.T)
     
     np.fill_diagonal(similarity_matrix, -1)  # Ignore self-similarity
     most_similar_indices = np.unravel_index(np.argmax(similarity_matrix), similarity_matrix.shape)
@@ -464,7 +461,9 @@ def install_and_run_script(package: str, args: list,*,script_url: str):
     else:
         subprocess.run(["pip", "install", package])
     subprocess.run(["curl", "-O", script_url])
+    print(script_url)
     script_name = script_url.split("/")[-1]
+    print(script_name)
     subprocess.run(["uv","run", script_name,args[0]])
 
 """"
