@@ -97,9 +97,6 @@ def parse_task_description(task_description: str,tools: list):
                             "tool_choice":"required",
                 }
                      )
-    logging.info("PRINTING RESPONSE:::"*3)
-    print(response.json())
-    logging.info("PRINTING RESPONSE:::"*3)
     return response.json()["choices"][0]["message"]
 
 
@@ -112,7 +109,6 @@ def execute_function_call(function_call):
         logging.info("PRINTING RESPONSE:::"*3)
         print('Calling function:', function_name)
         print('Arguments:', function_args)
-        logging.info("PRINTING RESPONSE:::"*3)
         if function_to_call:
             function_to_call(**function_args)
         else:
