@@ -92,7 +92,7 @@ async def a1(email: str, **kwargs):
     await run(
         f"""
 Install `uv` (if required) and download `https://raw.githubusercontent.com/ANdIeCOOl/TDS-Project1-Ollama_FastAPI-/refs/heads/main/datagen.py` and then run the downloaded file with uv
-with `{email}` as the only argument. NOTE DO NO NEED uvicorn just uv.
+with `{email}` as the only argument.  (NOTE: This will generate data files required for the next tasks.)
 """
     )
     return email in await read("/data/format.md")
